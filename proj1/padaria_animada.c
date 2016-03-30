@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <ncurses.h>
+#include <time.h>
 
 
 #define N 10        /* Número de threads */
@@ -26,17 +27,19 @@ volatile int escolhendo[N]; /* Vetor que marca quais threads estão escolhendo *
 volatile bool color[N];     /* Vetor que marca a cor dos tickets */
 volatile bool sharedColor = BLACK;
 volatile int  accessCounter[N];
-volatile int LastInCriticalRegion = -1;
 volatile int accesshistory[N];
+
 
 /* Retorna o valor máximo presente no vetor num[] cuja cor correspondente
  no velor color[] é a mesma cor da entrada */
 int max(bool entry_color) {
   int i, m = -1;
 
-  for (i = 0; i < N; i++) 
-    if (m < num[i] && color[i] == entry_color) 
-      m = num[i];
+	for (i = 0; i < N; i++) {
+		if (m < num[i] && color[i] == entry_color) 
+			  m = num[i];
+	}
+	printw("maior da cor");
   
   return m;
 }
@@ -44,7 +47,7 @@ int max(bool entry_color) {
 /* Função executada pelas threads */
 void* f_thread(void *v) {
   int thr_id = *(int *)v; 
-  int i, j, aux;
+  int i, j, aux, r[N];
 
   /* Acessa as região crítica N vezes */
   for (i = 0; i < N_VEZES; i++) {
@@ -59,6 +62,8 @@ void* f_thread(void *v) {
     /* Ja escolhi meu ticket! */
     escolhendo[thr_id] = FALSE;
 
+
+    sleep(1);
     /* Espera chegar a sua vez */
     for (j = 0; j < N; j++) {
       while (escolhendo[j] == TRUE); /* Espera terminar de escolher */
@@ -74,17 +79,19 @@ void* f_thread(void *v) {
     /* Escreve na região crítica */
     s = thr_id;
 
-    /* Marca a último a acessar a região crítica  */
-    LastInCriticalRegion = thr_id;
-
     /* Escreve no histórico */
     for(j=N; j > 0; j--) {
     	accesshistory[j] = accesshistory[j-1];
     }
     accesshistory[0] = thr_id;
 
+
     /* Incrementa contador de acessos */
     accessCounter[thr_id]++;
+
+    num[thr_id] = 0;  /* Marca que saiu da região crítica */
+
+    
 
     /* Muda a shared color para dar preferência a threads de cores diferentes */
     if (color[thr_id] == BLACK)
@@ -95,11 +102,15 @@ void* f_thread(void *v) {
 
     // printf("Thread %d, s = %d, ticket_color: %d, shared_color: %d \n", thr_id, s, color[thr_id], sharedColor);
 
-    sleep(1);
+  	/* Espera tempo aleatório na região nao crítica para gerar alternância entre
+  	a ordem dos acessos */
+    r[thr_id] = rand();
+    sleep(r[thr_id] % 2);
 
-    num[thr_id] = 0;  /* Marca que saiu da região crítica */
-    
-    sleep(1);
+    /* Espera tempo não aleatório para diminuir velocidade do algoritmo e permitir
+    uma melhor visualização */
+    sleep(4);
+
   }
 
   return NULL;
@@ -108,11 +119,12 @@ void* f_thread(void *v) {
 int main(int argc, char *argv[]) {
     pthread_t thr[N];
     int i, id[N];
+    time_t start, end;
+    double elapsed;
 
     initscr();
     noecho();
     curs_set(FALSE);
-
 
     for (i = 0; i < N; i++) {
       num[i] = 0;
@@ -124,6 +136,8 @@ int main(int argc, char *argv[]) {
       id[i] = i;
       pthread_create(&thr[i], NULL, f_thread, &id[i]);
     }
+
+    time(&start);  /* start the timer */
 
     //Animation
     while(1) {
@@ -157,10 +171,7 @@ int main(int argc, char *argv[]) {
         printw("\n");
         printw("\n");
         printw("\n");
-        printw("último a acessar a região crítica:\n %d\n", LastInCriticalRegion);
-        printw("\n");
-        printw("\n");
-        printw("Histórico de acessos à região crítica:\n");
+        printw("Histórico de acessos à região crítica\n(mais antigo à direita e mais recente à esquerda):\n");
         for(i = 0; i < N; i++) {
         	if(accesshistory[i] != -1)
         	printw("/ %d ", accesshistory[i]);
@@ -171,6 +182,12 @@ int main(int argc, char *argv[]) {
         printw("Contador de acessos à região crítica:\n/ %d / %d / %d / %d / %d / %d / %d / %d / %d / %d /\n", 
         	accessCounter[0], accessCounter[1], accessCounter[2], accessCounter[3], accessCounter[4],
         	 accessCounter[5], accessCounter[6], accessCounter[7], accessCounter[8], accessCounter[9]);
+
+ 		printw("\n");
+        printw("\n");
+        time(&end);
+        elapsed = difftime(end, start);
+        printw("Tempo de execução:\n%.1lfs\n", elapsed);
 
         //mvprintw(y, x, "o"); // Print our "ball" at the current xy position
         refresh();
