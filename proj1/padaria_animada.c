@@ -10,7 +10,7 @@
 
 
 #define N 10        /* Número de threads */
-#define N_VEZES 10  /* Número de acessos por thread à região crítica */
+#define N_VEZES 999999  /* Número de acessos por thread à região crítica */
 
 #define BLACK 0
 #define WHITE 1
@@ -25,6 +25,9 @@ volatile int num[N];        /* Vetor de senhas */
 volatile int escolhendo[N]; /* Vetor que marca quais threads estão escolhendo */
 volatile bool color[N];     /* Vetor que marca a cor dos tickets */
 volatile bool sharedColor = BLACK;
+volatile int  accessCounter[N];
+volatile int LastInCriticalRegion = -1;
+volatile int accesshistory[N];
 
 /* Retorna o valor máximo presente no vetor num[] cuja cor correspondente
  no velor color[] é a mesma cor da entrada */
@@ -68,14 +71,27 @@ void* f_thread(void *v) {
         while(num[j] != 0 && color[thr_id] == sharedColor && color[j] != color[thr_id] );
     }
 
+    /* Escreve na região crítica */
+    s = thr_id;
+
+    /* Marca a último a acessar a região crítica  */
+    LastInCriticalRegion = thr_id;
+
+    /* Escreve no histórico */
+    for(j=N; j > 0; j--) {
+    	accesshistory[j] = accesshistory[j-1];
+    }
+    accesshistory[0] = thr_id;
+
+    /* Incrementa contador de acessos */
+    accessCounter[thr_id]++;
+
     /* Muda a shared color para dar preferência a threads de cores diferentes */
     if (color[thr_id] == BLACK)
       sharedColor = WHITE;
     else
       sharedColor = BLACK;
 
-    /* Escreve na região crítica */
-    s = thr_id;
 
     // printf("Thread %d, s = %d, ticket_color: %d, shared_color: %d \n", thr_id, s, color[thr_id], sharedColor);
 
@@ -98,8 +114,11 @@ int main(int argc, char *argv[]) {
     curs_set(FALSE);
 
 
-    for (i = 0; i < N; i++) 
+    for (i = 0; i < N; i++) {
       num[i] = 0;
+      accesshistory[i] = -1;
+      accessCounter[i] = 0;
+    }
 
     for (i = 0; i < N; i++) {
       id[i] = i;
@@ -130,13 +149,28 @@ int main(int argc, char *argv[]) {
 
         printw("\n");
         printw("Ticket    ");
-
         for(i = 0; i < N; i++)
         {
             printw("| %d |", num[i]);
         }
 
         printw("\n");
+        printw("\n");
+        printw("\n");
+        printw("último a acessar a região crítica:\n %d\n", LastInCriticalRegion);
+        printw("\n");
+        printw("\n");
+        printw("Histórico de acessos à região crítica:\n");
+        for(i = 0; i < N; i++) {
+        	if(accesshistory[i] != -1)
+        	printw("/ %d ", accesshistory[i]);
+        }
+        printw("/\n");
+        printw("\n");
+        printw("\n");
+        printw("Contador de acessos à região crítica:\n/ %d / %d / %d / %d / %d / %d / %d / %d / %d / %d /\n", 
+        	accessCounter[0], accessCounter[1], accessCounter[2], accessCounter[3], accessCounter[4],
+        	 accessCounter[5], accessCounter[6], accessCounter[7], accessCounter[8], accessCounter[9]);
 
         //mvprintw(y, x, "o"); // Print our "ball" at the current xy position
         refresh();
