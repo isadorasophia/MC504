@@ -1,0 +1,5 @@
+A animação representa o algoritmo da padaria preto e branco. Os números representam a senha de cada cliente (thread) para comprar o pão (acessar a região crítica) com sua respectiva cor, (B)lack e (W)hite.
+
+Ao conseguir acesso ao pão, isto é, a região crítica, a senha 0 é automaticamente selecionada. Logo depois, o cliente recebe uma nova senha com uma nova cor e aguarda novamente.
+
+O processo é repetido por N = 10 vezes, até que todos os clientes se dêem por satisfeitos.
