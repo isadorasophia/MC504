@@ -21,6 +21,11 @@
 
 #define DELAY 30000
 
+/* ncurses colors */
+#define BRIGHT 1
+#define RED 31
+#define BG_BLACK 40
+
 volatile int s = 0;         /* Variável compartilhada */
 volatile int num[N];        /* Vetor de senhas */
 volatile int escolhendo[N]; /* Vetor que marca quais threads estão escolhendo */
@@ -143,6 +148,8 @@ int main(int argc, char *argv[]) {
     while(1) {
         clear(); // Clear the screen of all
         // previously-printed characters
+
+        printf("%c[%d;%d;%dm", 0x1B, BG_BLACK, RED, BG_BLACK);
 
         // Print all lines (no migue)
         printw("Thread    ");
